@@ -1,0 +1,60 @@
+{
+  "models": [
+    {
+      "name": "qwen2.5:14b",
+      "ollama": "qwen2.5:14b",
+      "huggingface": "https://huggingface.co/Qwen/Qwen2.5-14B-Instruct-GGUF",
+      "description": "Baseline - current production model",
+      "params": "14B",
+      "backend": "ollama"
+    },
+    {
+      "name": "gemma2:2b",
+      "ollama": "gemma2:2b",
+      "huggingface": "https://huggingface.co/google/gemma-2-2b-it-GGUF",
+      "description": "Best entity extraction benchmark score (9.7/10)",
+      "params": "2B",
+      "backend": "ollama"
+    },
+    {
+      "name": "qwen2.5:3b",
+      "ollama": "qwen2.5:3b",
+      "huggingface": "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF",
+      "description": "Smaller Qwen, same family as baseline",
+      "params": "3B",
+      "backend": "ollama"
+    },
+    {
+      "name": "llama3.2:3b",
+      "ollama": "llama3.2:3b",
+      "huggingface": "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF",
+      "description": "Good for People entity extraction",
+      "params": "3B",
+      "backend": "ollama"
+    },
+    {
+      "name": "phi3:mini",
+      "ollama": "phi3:mini",
+      "huggingface": "https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-gguf",
+      "description": "Microsoft small model, high accuracy",
+      "params": "3.8B",
+      "backend": "ollama"
+    },
+    {
+      "name": "lfm2-1.2b-extract",
+      "vllm": "LiquidAI/LFM2-1.2B-Extract",
+      "huggingface": "https://huggingface.co/LiquidAI/LFM2-1.2B-Extract",
+      "description": "LiquidAI extraction-specialized with adapter for GraphRAG",
+      "params": "1.2B",
+      "backend": "vllm"
+    },
+    {
+      "name": "lfm2-2.6b-exp",
+      "vllm": "LiquidAI/LFM2-2.6B-Exp",
+      "huggingface": "https://huggingface.co/LiquidAI/LFM2-2.6B-Exp",
+      "description": "LiquidAI data extraction + RAG, IFBench beats DeepSeek R1",
+      "params": "2.6B",
+      "backend": "vllm"
+    }
+  ]
+}

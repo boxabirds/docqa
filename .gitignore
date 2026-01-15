@@ -1,0 +1,87 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv/
+venv/
+ENV/
+
+# Node / Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+*.local
+
+# Test artifacts
+frontend/playwright-report/
+frontend/test-results/
+.pytest_cache/
+coverage/
+*.cover
+.hypothesis/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.env
+
+# Generated data / outputs
+benchmark_runs/
+tests/data/
+indexer_jobs/
+
+# POCs and experiments
+pocs/
+
+# Docker data (mounted volumes live in ~/.docqa/)
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+
+# Lock files (keep package-lock.json, ignore others)
+bun.lock
+yarn.lock
+
+# Secrets
+*.pem
+*.key
+credentials.json
+secrets.yaml
