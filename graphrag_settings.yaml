@@ -1,0 +1,94 @@
+encoding_model: cl100k_base
+# Skip summarization - LFM2 1.2B is optimized for extraction, not summarization
+# Summarization can be done in a separate pass with Qwen if needed
+skip_workflows: ["create_summarized_entities"]
+
+chunks:
+  size: 512
+  overlap: 50
+  group_by_columns: [id]
+  strategy:
+    type: sentence
+    chunk_size: 512
+    chunk_overlap: 50
+
+input:
+  type: file
+  file_type: text
+  base_dir: input
+  file_pattern: ".*\\.txt$"
+
+# Default LLM - routes through adapter (LFM2 for entity stage, Qwen for others)
+llm:
+  api_key: ${GRAPHRAG_API_KEY}
+  type: openai_chat
+  api_base: http://lfm2-adapter:8002/v1
+  model: LiquidAI/LFM2-1.2B-Extract
+  model_supports_json: true
+  request_timeout: 300.0
+  concurrent_requests: 25
+  max_tokens: 1500
+  tokens_per_minute: 0
+  requests_per_minute: 0
+
+parallelization:
+  stagger: 0.3
+  num_threads: 25
+
+async_mode: threaded
+
+# Entity extraction - LFM2 via adapter (converts JSON to GraphRAG format)
+# LFM2-1.2B-Extract has 128K native context, vLLM configured for 8192
+entity_extraction:
+  llm:
+    api_key: ${GRAPHRAG_API_KEY}
+    type: openai_chat
+    api_base: http://lfm2-adapter:8002/v1
+    model: LiquidAI/LFM2-1.2B-Extract
+    model_supports_json: true
+    request_timeout: 300.0
+    concurrent_requests: 25
+    max_tokens: 2000
+    tokens_per_minute: 0
+    requests_per_minute: 0
+  parallelization:
+    stagger: 0.1
+    num_threads: 25
+
+# Entity description summarization - uses same LLM as entity_extraction
+# since they run in the same pipeline stage
+summarize_descriptions:
+  llm:
+    api_key: ${GRAPHRAG_API_KEY}
+    type: openai_chat
+    api_base: http://lfm2-adapter:8002/v1
+    model: LiquidAI/LFM2-1.2B-Extract
+    model_supports_json: true
+    request_timeout: 300.0
+    concurrent_requests: 25
+    max_tokens: 1000
+    tokens_per_minute: 0
+    requests_per_minute: 0
+
+# Community reports - Qwen2.5-7B direct
+community_reports:
+  llm:
+    api_key: ${GRAPHRAG_API_KEY}
+    type: openai_chat
+    api_base: http://vllm-chat:8000/v1
+    model: Qwen/Qwen2.5-7B-Instruct
+    model_supports_json: true
+    request_timeout: 300.0
+    concurrent_requests: 25
+    max_tokens: 2000
+    tokens_per_minute: 0
+    requests_per_minute: 0
+
+embeddings:
+  async_mode: threaded
+  llm:
+    api_base: http://vllm-embed:8000/v1
+    api_key: ${GRAPHRAG_API_KEY}
+    model: BAAI/bge-m3
+    type: openai_embedding
+    concurrent_requests: 25

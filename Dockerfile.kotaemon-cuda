@@ -1,0 +1,9 @@
+# Kotaemon with CUDA support for Docling GPU acceleration
+FROM ghcr.io/cinnamon/kotaemon:main-full
+
+# Reinstall PyTorch with CUDA support (replaces CPU-only version)
+RUN pip uninstall -y torch torchvision torchaudio && \
+    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+# Verify CUDA is available
+RUN python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}')"

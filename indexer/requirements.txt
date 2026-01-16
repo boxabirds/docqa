@@ -1,0 +1,16 @@
+# CLI
+click>=8.0
+
+# HTTP client for vLLM API
+httpx>=0.25
+
+# GraphRAG and dependencies
+graphrag>=0.5.0
+pandas>=2.0
+pyarrow>=14.0
+
+# YAML for GraphRAG settings
+pyyaml>=6.0
+
+# Kotaemon for Docling loader (OCR stage runs this in subprocess)
+# Note: The OCR subprocess needs kotaemon installed with docling
