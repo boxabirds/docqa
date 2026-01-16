@@ -2,7 +2,8 @@ export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  timestamp: Date;
+  timestamp?: Date;  // Frontend display
+  created_at?: Date | string;  // Backend response
   sources?: Source[];
   isStreaming?: boolean;
 }
@@ -11,16 +12,19 @@ export interface Source {
   file_id: string | null;
   file_name: string;
   page_number: number | null;
+  page_end?: number | null;
   text_snippet: string;
   relevance_score?: number;
 }
 
 export interface Conversation {
   id: string;
-  title: string;
-  collection_id: number;
-  updated_at: Date;
-  message_count: number;
+  title?: string | null;
+  collection_id?: number | null;
+  created_at?: Date | string;
+  updated_at?: Date | string;
+  message_count?: number;
+  messages?: Message[];
 }
 
 export interface Collection {

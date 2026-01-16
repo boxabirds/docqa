@@ -1,13 +1,17 @@
 import { useChatStore } from '../../stores/chatStore';
+import { useConversations } from '../../hooks/useConversations';
 import { ConversationList } from './ConversationList';
 import { CollectionSelector } from './CollectionSelector';
 import { ThemeToggle } from './ThemeToggle';
 
 export function Sidebar() {
-  const { user } = useChatStore();
+  const { user, selectedCollectionId } = useChatStore();
+  const { create } = useConversations();
 
-  const handleNewChat = () => {
-    useChatStore.getState().selectConversation(null);
+  const handleNewChat = async () => {
+    if (selectedCollectionId) {
+      await create();
+    }
   };
 
   return (

@@ -126,7 +126,7 @@ export async function createConversation(collectionId: number, title?: string): 
   return response.json();
 }
 
-export async function getConversation(id: string): Promise<{ conversation: Conversation; messages: Message[] }> {
+export async function getConversation(id: string): Promise<Conversation & { messages?: Message[] }> {
   const response = await authFetch(`/conversations/${id}`);
   if (!response.ok) throw new Error('Failed to fetch conversation');
   return response.json();

@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { useChatStore } from '../../stores/chatStore';
+import { useConversations } from '../../hooks/useConversations';
 import type { Conversation } from '../../types';
 
 export function ConversationList() {
-  const { conversations, currentConversationId, selectConversation, deleteConversation, updateConversation } =
-    useChatStore();
+  const { conversations, currentConversationId, select, remove, rename } = useConversations();
 
   if (conversations.length === 0) {
     return (
@@ -32,9 +31,9 @@ export function ConversationList() {
                 key={conv.id}
                 conversation={conv}
                 isActive={conv.id === currentConversationId}
-                onSelect={() => selectConversation(conv.id)}
-                onDelete={() => deleteConversation(conv.id)}
-                onRename={(title) => updateConversation(conv.id, { title })}
+                onSelect={() => select(conv.id)}
+                onDelete={() => remove(conv.id)}
+                onRename={(title) => rename(conv.id, title)}
               />
             ))}
           </div>
@@ -54,7 +53,7 @@ interface ConversationItemProps {
 
 function ConversationItem({ conversation, isActive, onSelect, onDelete, onRename }: ConversationItemProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(conversation.title);
+  const [editValue, setEditValue] = useState(conversation.title || 'Untitled');
   const [showMenu, setShowMenu] = useState(false);
 
   const handleRename = () => {
@@ -109,7 +108,7 @@ function ConversationItem({ conversation, isActive, onSelect, onDelete, onRename
           />
         ) : (
           <span className="flex-1 text-sm text-ink-700 dark:text-ink-200 truncate">
-            {conversation.title}
+            {conversation.title || 'Untitled'}
           </span>
         )}
 
@@ -173,7 +172,7 @@ function groupByDate(conversations: Conversation[]): Record<string, Conversation
   const groups: Record<string, Conversation[]> = {};
 
   for (const conv of conversations) {
-    const date = new Date(conv.updated_at);
+    const date = conv.updated_at ? new Date(conv.updated_at) : new Date();
     let label: string;
 
     if (date >= today) {

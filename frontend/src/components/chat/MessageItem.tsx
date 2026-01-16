@@ -58,7 +58,7 @@ export function MessageItem({ message, isLast, style }: MessageItemProps) {
                 {isUser ? 'You' : 'Assistant'}
               </span>
               <span className="text-xs text-ink-400 dark:text-ink-500">
-                {formatTime(message.timestamp)}
+                {formatTime(message.timestamp || message.created_at)}
               </span>
             </div>
 
@@ -110,7 +110,8 @@ export function MessageItem({ message, isLast, style }: MessageItemProps) {
   );
 }
 
-function formatTime(date: Date): string {
+function formatTime(date?: Date | string): string {
+  if (!date) return '';
   return new Date(date).toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',

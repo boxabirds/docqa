@@ -1,6 +1,6 @@
 import { useRef, useCallback } from 'react';
 import { useChatStore } from '../stores/chatStore';
-import { streamChat, abortChat, sendFeedback, regenerateMessage } from '../api/client';
+import { streamChat, abortChat, sendFeedback, regenerateMessage, createConversation } from '../api/client';
 import { generateId } from '../utils/uuid';
 
 export function useChat() {
@@ -17,6 +17,8 @@ export function useChat() {
     appendToMessage,
     setSources,
     setIsStreaming,
+    addConversation,
+    selectConversation,
   } = useChatStore();
 
   const sendMessage = useCallback(
@@ -25,6 +27,20 @@ export function useChat() {
 
       const trimmed = content.trim();
       if (!trimmed) return;
+
+      // Auto-create conversation if one doesn't exist
+      let conversationId = currentConversationId;
+      if (!conversationId) {
+        try {
+          const conv = await createConversation(selectedCollectionId, 'New conversation');
+          conversationId = conv.id;
+          addConversation(conv);
+          selectConversation(conv.id);
+        } catch (error) {
+          console.error('Failed to create conversation:', error);
+          // Continue without conversation - messages won't be saved
+        }
+      }
 
       // Add user message
       const userMessage = {
@@ -52,7 +68,7 @@ export function useChat() {
         const stream = streamChat(
           {
             message: trimmed,
-            conversation_id: currentConversationId || undefined,
+            conversation_id: conversationId || undefined,
             collection_id: selectedCollectionId,
           },
           abortControllerRef.current.signal
@@ -114,6 +130,8 @@ export function useChat() {
       appendToMessage,
       setSources,
       setIsStreaming,
+      addConversation,
+      selectConversation,
     ]
   );
 

@@ -179,3 +179,37 @@ DO $$ BEGIN
     ALTER TABLE documents ADD COLUMN pdf_path VARCHAR(1000);
 EXCEPTION WHEN duplicate_column THEN NULL;
 END $$;
+
+-- ============================================================
+-- Conversations (chat sessions)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS conversations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    collection_id INTEGER REFERENCES collections(id) ON DELETE CASCADE,
+    user_id VARCHAR(64) DEFAULT 'anonymous',  -- Future: auth user
+    title VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_conversations_collection ON conversations(collection_id);
+
+CREATE OR REPLACE TRIGGER conversations_updated_at
+    BEFORE UPDATE ON conversations
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at();
+
+-- ============================================================
+-- Messages (chat history)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    role VARCHAR(20) NOT NULL,  -- 'user' | 'assistant'
+    content TEXT NOT NULL,
+    sources JSONB,  -- Stored retrieval sources for assistant messages
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, created_at);
