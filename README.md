@@ -1,6 +1,6 @@
-# Document Q&A with GraphRAG + PostgreSQL
+# DocQA - GraphRAG Document Q&A System
 
-A self-contained, GPU-accelerated document analysis system with knowledge graph retrieval.
+A GPU-accelerated document analysis system with knowledge graph retrieval, built on PostgreSQL + pgvector.
 
 ## Documentation
 
@@ -9,168 +9,195 @@ A self-contained, GPU-accelerated document analysis system with knowledge graph 
 
 ## Stack
 
-- **Open WebUI** - ChatGPT-like interface with built-in RAG (45k+ GitHub stars)
-- **Ollama** - Local LLM inference
-- **Apache Tika** - Document extraction (PDF, DOCX, PPTX, XLSX, etc. + OCR)
-- **Qwen3-30B-A3B** - MoE model, excellent reasoning at ~70 tok/s
-- **nomic-embed-text** - Fast, high-quality embeddings
+| Component | Technology |
+|-----------|------------|
+| **Frontend** | React 19 + Vite + TailwindCSS + Zustand |
+| **Backend API** | FastAPI with async PostgreSQL |
+| **Database** | PostgreSQL 16 + pgvector |
+| **LLM Inference** | vLLM (Qwen2.5-7B-Instruct) |
+| **Embeddings** | BGE-M3 via vLLM |
+| **Entity Extraction** | LFM2-1.2B-Extract via vLLM |
+| **Document Processing** | Docling (GPU-accelerated OCR) |
+| **Retrieval** | Custom GraphRAG with pgvector similarity search |
+
+## Architecture
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────────┐
+│   React     │────▶│   FastAPI   │────▶│   PostgreSQL    │
+│  Frontend   │     │   Backend   │     │   + pgvector    │
+└─────────────┘     └──────┬──────┘     └─────────────────┘
+     :3001                 │                     ▲
+                           │                     │
+                           ▼                     │
+                    ┌─────────────┐              │
+                    │    vLLM     │              │
+                    │  (Chat +    │              │
+                    │  Embeddings)│              │
+                    └─────────────┘              │
+                                                 │
+┌─────────────┐     ┌─────────────┐              │
+│   Docling   │────▶│   Indexer   │──────────────┘
+│    (OCR)    │     │  Pipeline   │
+└─────────────┘     └─────────────┘
+```
 
 ## Quick Start
 
 ```bash
-chmod +x setup.sh
-./setup.sh
+# Start core services (PostgreSQL + backend + frontend)
+docker compose up -d postgres backend
+
+# Start vLLM services for inference
+docker compose --profile vllm up -d
+
+# Frontend development server
+cd frontend && npm install && npm run dev
 ```
 
-Then open http://localhost:3000
+- **Frontend**: http://localhost:3001
+- **Backend API**: http://localhost:8080
+- **API docs**: http://localhost:8080/docs
 
-## Manual Setup
+## Services
+
+### Core Services (default profile)
 
 ```bash
-# Start services
 docker compose up -d
-
-# Pull models (first run only, ~20GB total)
-docker exec ollama ollama pull qwen3:30b-a3b
-docker exec ollama ollama pull nomic-embed-text:latest
-
-# Optional: vision model for diagrams/images
-docker exec ollama ollama pull qwen3-vl:8b
 ```
 
-## What You Get
+| Service | Port | Description |
+|---------|------|-------------|
+| `postgres` | 5433 | PostgreSQL 16 + pgvector |
+| `backend` | 8080 | FastAPI REST API |
+| `kotaemon` | 3000 | Gradio UI (legacy, for Docling) |
+| `ollama` | 11434 | Deprecated, kept for Kotaemon |
 
-- **ChatGPT-style interface** - familiar UX
-- **Upload docs via web** - drag & drop in chat or via Documents tab
-- **Supports**: PDF, DOCX, DOC, PPTX, PPT, XLSX, XLS, TXT, MD, HTML, RTF, and more
-- **OCR built-in** - scanned PDFs work out of the box
-- **Knowledge bases** - group documents into searchable collections
-- **Multi-user** - each user has their own chat history and docs
+### vLLM Services (vllm profile)
 
-## Configuration
-
-### First-Time Setup
-
-1. Open http://localhost:3000
-2. Create admin account (first user becomes admin)
-3. Settings are pre-configured via environment variables, but you can adjust in **Admin Panel > Settings > Documents**
-
-### Increase Context Length (Important!)
-
-Go to **Admin Panel > Settings > Models**, select your model, and set **Context Length** to **32768** or higher. The default 2048 is too small for RAG.
-
-### Alternative: Docling for Complex PDFs
-
-If you have scientific papers, invoices, or documents with complex tables, swap Tika for Docling:
-
-```yaml
-# In docker-compose.yml, replace tika service with:
-docling:
-  image: ghcr.io/docling-project/docling-serve-cu124:latest
-  container_name: docling
-  ports:
-    - "5001:5001"
-  deploy:
-    resources:
-      reservations:
-        devices:
-          - driver: nvidia
-            count: 1
-            capabilities: [gpu]
-
-# And update open-webui environment:
-- CONTENT_EXTRACTION_ENGINE=docling
-- DOCLING_SERVER_URL=http://docling:5001
+```bash
+docker compose --profile vllm up -d
 ```
 
-## Usage
+| Service | Port | Model | VRAM |
+|---------|------|-------|------|
+| `vllm-chat` | 8004 | Qwen2.5-7B-Instruct | ~14GB |
+| `vllm-embed` | 8003 | BGE-M3 | ~1.5GB |
+| `vllm-llm` | 8001 | LFM2-1.2B-Extract | ~3.7GB |
+| `lfm2-adapter` | 8002 | Format adapter | CPU |
+| `indexer` | - | Pipeline orchestrator | GPU |
 
-### Upload Documents
+## Indexing Documents
 
-**Option 1: Document Library**
-- Go to **Workspace > Documents**
-- Click **+** to upload files
-- Supports: PDF, DOCX, XLSX, PPTX, TXT, MD, HTML
+The indexer pipeline processes documents through multiple stages:
 
-**Option 2: Direct Upload in Chat**
-- Click the 📎 icon in chat
-- Upload files inline with your question
+1. **OCR** - Docling extracts text from PDFs with layout understanding
+2. **Entity Extraction** - LFM2 extracts entities and relationships
+3. **Community Detection** - Leiden algorithm clusters the knowledge graph
+4. **Community Reports** - Qwen2.5-7B generates summaries
+5. **Embeddings** - BGE-M3 embeds entities and text units
 
-### Query Documents
+```bash
+# Run indexer interactively
+docker exec -it indexer bash
+python -m indexer.cli index /data/my_documents --collection "My Collection"
+```
 
-**Option 1: # Reference**
-- Type `#` in chat to see available documents
-- Select document(s) to include in context
+## API Endpoints
 
-**Option 2: Knowledge Bases**
-- Go to **Workspace > Knowledge**
-- Create a knowledge base from multiple documents
-- Reference with `#knowledge-base-name` in chat
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/health` | GET | Health check |
+| `/api/collections` | GET | List document collections |
+| `/api/conversations` | GET/POST | Manage conversations |
+| `/api/conversations/{id}` | GET/PATCH/DELETE | Single conversation |
+| `/api/chat` | POST | Stream chat response (SSE) |
+| `/api/documents/{id}/pdf` | GET | Serve PDF for viewing |
 
-### Image Analysis
+### Chat Request
 
-Upload images directly in chat - Open WebUI will route to the vision model if available.
+```bash
+curl -X POST http://localhost:8080/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "What is the main topic?", "collection_id": 1}'
+```
+
+Response is Server-Sent Events with types: `info`, `chat`, `done`, `error`.
+
+## Data Storage
+
+All data persists to `~/.docqa/`:
+
+| Path | Contents |
+|------|----------|
+| `~/.docqa/postgres` | PostgreSQL data |
+| `~/.docqa/kotaemon` | Docling models, Kotaemon data |
+| `~/.docqa/indexer` | Indexer job state |
+
+## Development
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev      # Dev server on :3001
+npm run build    # Production build
+npm run test     # Playwright tests
+```
+
+### Backend
+
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn backend.main:app --reload --port 8000
+```
 
 ## Commands
 
 ```bash
 # View logs
-docker compose logs -f
+docker compose logs -f backend
+docker compose --profile vllm logs -f vllm-chat
 
-# Stop
-docker compose down
-
-# Update Open WebUI
-docker compose pull
-docker compose up -d
+# Stop all
+docker compose --profile vllm down
 
 # Full reset (removes all data)
-docker compose down -v
+docker compose --profile vllm down -v
+rm -rf ~/.docqa
+
+# Check GPU usage
+nvidia-smi
 ```
 
 ## Troubleshooting
 
-### "Model not found"
+### vLLM not responding
 ```bash
-docker exec ollama ollama list  # Check installed models
-docker exec ollama ollama pull qwen3:30b-a3b
+docker compose --profile vllm logs vllm-chat
+# Check if model is loaded (first request triggers download)
 ```
-
-### Slow RAG / timeouts
-Increase model context length in Admin Panel > Settings > Models
-
-### Poor extraction quality
-Try switching Content Extraction engine:
-- **Tika**: Good general-purpose
-- **Docling**: Better for complex layouts, tables
 
 ### Out of VRAM
-The 30B-A3B model needs ~21GB. Check with `nvidia-smi`.
-
-## Data Locations
-
-| Data | Container Path | Volume |
-|------|----------------|--------|
-| Documents & Settings | /app/backend/data | open_webui_data |
-| LLM Models | /root/.ollama | ollama_data |
-
-## Backup
-
+The full vLLM stack needs ~20GB VRAM. Run fewer services or use smaller models:
 ```bash
-# Backup Open WebUI data (documents, settings, chat history)
-docker run --rm -v open_webui_data:/data -v $(pwd):/backup \
-  alpine tar czf /backup/openwebui-backup.tar.gz /data
-
-# Restore
-docker run --rm -v open_webui_data:/data -v $(pwd):/backup \
-  alpine tar xzf /backup/openwebui-backup.tar.gz -C /
+# Run only embeddings + chat (skip entity extraction)
+docker compose --profile vllm up -d vllm-embed vllm-chat
 ```
 
-## Why Open WebUI?
+### Database connection errors
+```bash
+# Check PostgreSQL is healthy
+docker compose logs postgres
+docker exec docqa-postgres pg_isready -U docqa
+```
 
-- 45k+ GitHub stars, very active development
-- Built-in RAG with 9 vector DB options
-- Multiple document extraction engines
-- ChatGPT-style UX
-- Multi-user support
-- No custom code to maintain
+## Legacy Components
+
+- **Kotaemon** (port 3000): Original Gradio UI, kept for Docling integration
+- **Ollama** (port 11434): Deprecated, kept only for Kotaemon compatibility
+
+The main application now uses the React frontend + FastAPI backend.
